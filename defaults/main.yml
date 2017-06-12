@@ -1,6 +1,6 @@
 ---
 # The version of filebeat to install
-filebeat_version: 1.3.1
+filebeat_version: 5.4.1
 
 # `filebeat_config` is templated directly into filebeat.yml for the config.
 # You are expected to override this variable, as these configurations are
@@ -11,33 +11,102 @@ filebeat_config:
   filebeat:
     prospectors:
       - paths:
-          - /var/log/messages
-          - /var/log/*.log
+          - /var/log/oio/sds/*/account*/*.log
+          - /var/log/oio/sds/*/oio-event-agent*/*.log
+          - /var/log/oio/sds/*/oioproxy*/*.log
+          - /var/log/oio/sds/*/conscience*/*.log
+          - /var/log/oio/sds/*/meta*/*.log
+          - /var/log/oio/sds/*/account*/*.log.1
+          - /var/log/oio/sds/*/oio-event-agent*/*.log.1
+          - /var/log/oio/sds/*/oioproxy*/*.log.1
+          - /var/log/oio/sds/*/conscience*/*.log.1
+          - /var/log/oio/sds/*/meta*/*.log.1
         input_type: log
+        document_type: logs
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+        ignore_older: 15m
+
+      - paths:
+          - /var/log/oio/sds/*/account*/*.access
+          - /var/log/oio/sds/*/oio-event-agent*/*.access
+          - /var/log/oio/sds/*/oioproxy*/*.access
+          - /var/log/oio/sds/*/conscience*/*.access
+          - /var/log/oio/sds/*/meta*/*.access
+          - /var/log/oio/sds/*/account*/*.access.1
+          - /var/log/oio/sds/*/oio-event-agent*/*.access.1
+          - /var/log/oio/sds/*/oioproxy*/*.access.1
+          - /var/log/oio/sds/*/conscience*/*.access.1
+          - /var/log/oio/sds/*/meta*/*.access.1
+        input_type: log
+        document_type: access
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+        ignore_older: 15m
+
+      - paths:
+          - /var/log/oio/sds/*/rawx*/*httpd-errors.log
+        input_type: log
+        document_type: rawx-errors
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+
+      - paths:
+          - /var/log/oio/sds/*/rawx*/*httpd-access.log
+        input_type: log
+        document_type: rawx-access
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+
+
   output:
-    file:
-      path: /tmp/filebeat
-      filename: filebeat
+    logstash:
+      hosts:
+        #- "172.16.139.250:5044"
+        - "{{ logstash_host }}"
+  tls:
+      certificate_authorities:
+        #- /etc/pki/tls/certs/logstash-forwarder.crt
+        - "{{ filebeat_ca_path }}"
   logging:
-    to_syslog: true
-    level: error
+    to_files: true
+    level: warning
+    files:
+      path: /var/log/mybeat
+      name: mybeat.log
+      keepfiles: 7
+      rotateeverybytes: 10485760
 
 # The contents of this variable will be placed into the `filebeat_ca_path`
 # This should either be set to a string containing your CA certificate or
 # use a lookup plugin to retrieve it.
 #  ex:
 #   filebeat_ca_cert: "{{ lookup('file', '/path/to/ca.crt') }}"
-filebeat_ca_cert: null
+#filebeat_ca_cert: null
+#filebeat_ca_cert: "{{ lookup('file', '/etc/pki/tls/certs/logstash-forwarder.crt') }}"
 # Path to which the above certificate will be uploaded
-filebeat_ca_path: /etc/filebeat/ca.crt
+#filebeat_ca_path: /etc/pki/tls/certs/logstash-forwarder.crt
+# If needed must be inserted in playbook role section
+# Ex:
+#     - { role: ansible-filebeat-master, filebeat_ca_cert: "{{ lookup('file', '/etc/pki/tls/certs/logstash-forwarder.crt') }}",  filebeat_ca_path: /etc/pki/tls/certs/logstash-forwarder.crt, logstash_host: '172.16.139.250:5044' }
 
 # Repository settings
-filebeat_gpg_url: https://packages.elastic.co/GPG-KEY-elasticsearch
+filebeat_gpg_url: http://packages.elastic.co/GPG-KEY-elasticsearch
 ## Debian
-filebeat_apt_repo_v1: "deb https://packages.elastic.co/beats/apt stable main"
-filebeat_apt_repo_v5: "deb https://artifacts.elastic.co/packages/5.x/apt stable main"
+filebeat_apt_repo_v1: "deb http://packages.elastic.co/beats/apt stable main"
+filebeat_apt_repo_v5: "deb http://artifacts.elastic.co/packages/5.x/apt stable main"
 filebeat_apt_repo: "{{ filebeat_version|version_compare('5', '<')|ternary(filebeat_apt_repo_v1, filebeat_apt_repo_v5) }}"
 ## Redhat
-filebeat_repo_url_v1: https://packages.elastic.co/beats/yum/el/$basearch
-filebeat_repo_url_v5: https://artifacts.elastic.co/packages/5.x/yum
+filebeat_repo_url_v1: http://packages.elastic.co/beats/yum/el/$basearch
+filebeat_repo_url_v5: http://artifacts.elastic.co/packages/5.x/yum
 filebeat_repo_url: "{{ filebeat_version|version_compare('5', '<')|ternary(filebeat_repo_url_v1, filebeat_repo_url_v5) }}"
+# Contact GitHub API Training Shop Blog About
+

@@ -6,6 +6,7 @@
 - name: create beats yum repo
   yumrepo:
     name: beats
+    description: Elastic Beats Repository
     baseurl: "{{ filebeat_repo_url }}"
     enabled: yes
     gpgcheck: yes
