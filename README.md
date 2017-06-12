@@ -1,69 +1,104 @@
-Ansible Filebeat role
+Ansible Role OpenIO Filebeat
 =========
 
-[![Ansible Galaxy](https://img.shields.io/badge/galaxy-DavidWittman.filebeat-blue.svg?style=flat)](https://galaxy.ansible.com/detail#/role/6293) [![Travis](https://travis-ci.org/DavidWittman/ansible-filebeat.svg?branch=master)](https://travis-ci.org/DavidWittman/ansible-filebeat)
-
-Installs Elastic's Filebeat for forwarding logs.
+Installs Elastic's Filebeat for forwarding OpenIO logs.
 
 Role Variables
 --------------
 
- - `filebeat_version` - The version of filebeat to install. Defaults to `1.3.1`.
- - `filebeat_config` - YAML representation of your filebeat config. This is templated directly into the configuration file as YAML. See the [example configuration](https://github.com/elastic/beats/blob/master/filebeat/filebeat.full.yml) for an exhaustive list of configuration options. Defaults to:
+ - `filebeat_version` - The version of filebeat to install. Defaults to `5.4.1`.
+ - `filebeat_config` - YAML representation of our filebeat OpenIO specific configuration.
 
-  ``` yaml
-  filebeat_config:
-    filebeat:
-      prospectors:
-        - paths:
-            - /var/log/messages
-            - /var/log/*.log
-          input_type: log
-    output:
-      file:
-        path: /tmp/filebeat
-        filename: filebeat
-    logging:
-      to_syslog: true
-      level: error
+```yaml
+filebeat_config:
+  filebeat:
+    prospectors:
+      - paths:
+          - /var/log/oio/sds/*/account*/*.log
+          - /var/log/oio/sds/*/oio-event-agent*/*.log
+          - /var/log/oio/sds/*/oioproxy*/*.log
+          - /var/log/oio/sds/*/conscience*/*.log
+          - /var/log/oio/sds/*/meta*/*.log
+          - /var/log/oio/sds/*/account*/*.log.1
+          - /var/log/oio/sds/*/oio-event-agent*/*.log.1
+          - /var/log/oio/sds/*/oioproxy*/*.log.1
+          - /var/log/oio/sds/*/conscience*/*.log.1
+          - /var/log/oio/sds/*/meta*/*.log.1
+        input_type: log
+        document_type: logs
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+        ignore_older: 15m
+
+      - paths:
+          - /var/log/oio/sds/*/account*/*.access
+          - /var/log/oio/sds/*/oio-event-agent*/*.access
+          - /var/log/oio/sds/*/oioproxy*/*.access
+          - /var/log/oio/sds/*/conscience*/*.access
+          - /var/log/oio/sds/*/meta*/*.access
+          - /var/log/oio/sds/*/account*/*.access.1
+          - /var/log/oio/sds/*/oio-event-agent*/*.access.1
+          - /var/log/oio/sds/*/oioproxy*/*.access.1
+          - /var/log/oio/sds/*/conscience*/*.access.1
+          - /var/log/oio/sds/*/meta*/*.access.1
+        input_type: log
+        document_type: access
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+        ignore_older: 15m
+
+      - paths:
+          - /var/log/oio/sds/*/rawx*/*httpd-errors.log
+        input_type: log
+        document_type: rawx-errors
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+
+      - paths:
+          - /var/log/oio/sds/*/rawx*/*httpd-access.log
+        input_type: log
+        document_type: rawx-access
+        scan_frequency: 5s
+        close_removed: true
+        close_inactive: 1m
+        close_renamed: true
+
+
+  output:
+    logstash:
+      hosts:
+        - "{{ logstash_host }}"
+  tls:
+      certificate_authorities:
+        - "{{ filebeat_ca_path }}"
+  logging:
+    to_files: true
+    level: warning
+    files:
+      path: /var/log/mybeat
+      name: mybeat.log
+      keepfiles: 7
+      rotateeverybytes: 10485760
   ```
- - `filebeat_ca_cert` - If provided, the contents of this variable will be placed into the file identified by `filebeat_ca_path` on the target host. You can then include the `filebeat_ca_path` within your configuration to properly authenticate your TLS connections to Logstash/Elasticsearch/etc.
- 
-  If you wish to load your CA certificate from a file, use the `file` lookup plugin, e.g.:
-  ``` yaml
-  filebeat_ca_cert: "{{ lookup('file', '/path/to/ca.crt') }}"
-  ```
- - `filebeat_ca_path` - If a CA certificate is provided in `filebeat_ca_cert`, it will be created at this path. 
+  
+ - `filebeat_ca_cert`, `filebeat_ca_path`  and `logstash_host`  are provided by ansible playbook.
 
-You can also store the config in separate `filebeat.yml` file and include it using [lookup](http://docs.ansible.com/ansible/playbooks_lookups.html#intro-to-lookups-getting-file-contents):
-
-``` yaml
-filebeat_config: "{{ lookup('file', './filebeat.yml')|from_yaml }}"
+Playbook example:
+---------
+```yaml
+---
+- name: Install and configure filebeat
+  hosts: servers
+  roles:
+    - { role: ansible-filebeat-master, filebeat_ca_cert: "{{ lookup('file', '/etc/pki/tls/certs/logstash-forwarder.crt') }}",  filebeat_ca_path: /etc/pki/tls/certs/logstash-forwarder.crt, logstash_host: '172.16.139.250:5044' }
 ```
 
-Common Configurations
----------------------
-
-Connecting to Elasticsearch:
-
-  ``` yaml
-  filebeat_config:
-    filebeat:
-      prospectors:
-        - paths:
-            - /var/log/messages
-            - /var/log/*.log
-          input_type: log
-    output:
-      elasticsearch:
-        hosts:
-          - "http://localhost:9200"
-        username: "bob"
-        password: "12345"
-    logging:
-      to_syslog: true
-      level: error
-  ```
 
 License
 -------
