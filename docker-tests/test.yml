@@ -1,0 +1,19 @@
+---
+- hosts: localhost
+  any_errors_fatal: true
+  become: true
+  vars:
+    namespace: TRAVIS
+
+  roles:
+    - role: repo
+    - role: users
+    - role: gridinit
+      openio_gridinit_namespace: "{{ namespace }}"
+      openio_gridinit_per_ns: false
+    - role: role_under_test
+      openio_filebeat_namespace: "{{ namespace }}"
+      openio_filebeat_serviceid: "0"
+      openio_filebeat_gridinit_dir: "/etc/gridinit.d/"
+      openio_filebeat_gridinit_file_prefix: "{{ namespace }}-"
+...

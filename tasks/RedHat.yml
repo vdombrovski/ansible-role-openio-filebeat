@@ -1,0 +1,19 @@
+---
+- name: Install Key
+  rpm_key:
+    key: "{{ openio_filebeat_gpg_url }}"
+
+- name: Add repo
+  yum_repository:
+    name: beats
+    description: Elastic Beats Repository
+    baseurl: "{{ openio_filebeat_repo_url }}"
+    enabled: true
+    gpgcheck: true
+    gpgkey: "{{ openio_filebeat_gpg_url }}"
+
+- name: Install filebeat
+  yum:
+    name: "filebeat-{{ openio_filebeat_version }}"
+    state: present
+...

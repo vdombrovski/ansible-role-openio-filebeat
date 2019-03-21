@@ -1,112 +1,37 @@
 ---
-# The version of filebeat to install
-filebeat_version: 5.4.1
+openio_filebeat_version: 6.7.0
 
-# `filebeat_config` is templated directly into filebeat.yml for the config.
-# You are expected to override this variable, as these configurations are
-# only suited for development purposes.
-# See https://github.com/elastic/filebeat/blob/master/etc/filebeat.yml for
-# an exhaustive list of configurations.
-filebeat_config:
-  filebeat:
-    prospectors:
-      - paths:
-          - /var/log/oio/sds/*/account*/*.log
-          - /var/log/oio/sds/*/oio-event-agent*/*.log
-          - /var/log/oio/sds/*/oioproxy*/*.log
-          - /var/log/oio/sds/*/conscience*/*.log
-          - /var/log/oio/sds/*/meta*/*.log
-          - /var/log/oio/sds/*/account*/*.log.1
-          - /var/log/oio/sds/*/oio-event-agent*/*.log.1
-          - /var/log/oio/sds/*/oioproxy*/*.log.1
-          - /var/log/oio/sds/*/conscience*/*.log.1
-          - /var/log/oio/sds/*/meta*/*.log.1
-        input_type: log
-        document_type: logs
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
-        ignore_older: 15m
+openio_filebeat_namespace: OPENIO
+openio_filebeat_gridinit_dir: "/etc/gridinit.d/{{ openio_filebeat_namespace }}"
+openio_filebeat_gridinit_file_prefix: ""
+openio_filebeat_pid_directory:
+  "/run/filebeat/{{ openio_filebeat_namespace }}/filebeat-{{ openio_filebeat_serviceid }}"
 
-      - paths:
-          - /var/log/oio/sds/*/account*/*.access
-          - /var/log/oio/sds/*/oio-event-agent*/*.access
-          - /var/log/oio/sds/*/oioproxy*/*.access
-          - /var/log/oio/sds/*/conscience*/*.access
-          - /var/log/oio/sds/*/meta*/*.access
-          - /var/log/oio/sds/*/account*/*.access.1
-          - /var/log/oio/sds/*/oio-event-agent*/*.access.1
-          - /var/log/oio/sds/*/oioproxy*/*.access.1
-          - /var/log/oio/sds/*/conscience*/*.access.1
-          - /var/log/oio/sds/*/meta*/*.access.1
-        input_type: log
-        document_type: access
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
-        ignore_older: 15m
+openio_filebeat_serviceid: "0"
+openio_filebeat_volume: "/var/lib/oio/sds/{{ openio_filebeat_namespace }}/filebeat-{{ openio_filebeat_serviceid }}"
+openio_filebeat_openio_log_path: "/var/log/oio/sds/{{ openio_filebeat_namespace }}"
 
-      - paths:
-          - /var/log/oio/sds/*/rawx*/*httpd-errors.log
-        input_type: log
-        document_type: rawx-errors
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
+openio_filebeat_es_hosts:
+  - "localhost:6400"
 
-      - paths:
-          - /var/log/oio/sds/*/rawx*/*httpd-access.log
-        input_type: log
-        document_type: rawx-access
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
+openio_filebeat_provision_only: false
+
+openio_filebeat_input_options:
+  fields_under_root: true
+  close_inactive: 5m
+  scan_frequency: 10s
+  close_renamed: true
+  clean_removed: true
+  ignore_older: 0
+  harvester_buffer_size: 16384
+  max_bytes: 10485760
+
+openio_filebeat_custom_inputs: []
+# - service: [SERVICE]
+#   path: [PATH_TO_LOG_FILE]
+#   format: [STRING_PARSER]
+
+openio_filebeat_inputs: "{{ openio_filebeat_default_inputs + openio_filebeat_custom_inputs }}"
 
 
-  output:
-    logstash:
-      hosts:
-        #- "172.16.139.250:5044"
-        - "{{ logstash_host }}"
-  tls:
-      certificate_authorities:
-        #- /etc/pki/tls/certs/logstash-forwarder.crt
-        - "{{ filebeat_ca_path }}"
-  logging:
-    to_files: true
-    level: warning
-    files:
-      path: /var/log/mybeat
-      name: mybeat.log
-      keepfiles: 7
-      rotateeverybytes: 10485760
-
-# The contents of this variable will be placed into the `filebeat_ca_path`
-# This should either be set to a string containing your CA certificate or
-# use a lookup plugin to retrieve it.
-#  ex:
-#   filebeat_ca_cert: "{{ lookup('file', '/path/to/ca.crt') }}"
-#filebeat_ca_cert: null
-#filebeat_ca_cert: "{{ lookup('file', '/etc/pki/tls/certs/logstash-forwarder.crt') }}"
-# Path to which the above certificate will be uploaded
-#filebeat_ca_path: /etc/pki/tls/certs/logstash-forwarder.crt
-# If needed must be inserted in playbook role section
-# Ex:
-#     - { role: ansible-filebeat-master, filebeat_ca_cert: "{{ lookup('file', '/etc/pki/tls/certs/logstash-forwarder.crt') }}",  filebeat_ca_path: /etc/pki/tls/certs/logstash-forwarder.crt, logstash_host: '172.16.139.250:5044' }
-
-# Repository settings
-filebeat_gpg_url: http://packages.elastic.co/GPG-KEY-elasticsearch
-## Debian
-filebeat_apt_repo_v1: "deb http://packages.elastic.co/beats/apt stable main"
-filebeat_apt_repo_v5: "deb http://artifacts.elastic.co/packages/5.x/apt stable main"
-filebeat_apt_repo: "{{ filebeat_version|version_compare('5', '<')|ternary(filebeat_apt_repo_v1, filebeat_apt_repo_v5) }}"
-## Redhat
-filebeat_repo_url_v1: http://packages.elastic.co/beats/yum/el/$basearch
-filebeat_repo_url_v5: http://artifacts.elastic.co/packages/5.x/yum
-filebeat_repo_url: "{{ filebeat_version|version_compare('5', '<')|ternary(filebeat_repo_url_v1, filebeat_repo_url_v5) }}"
-# Contact GitHub API Training Shop Blog About
-
+...

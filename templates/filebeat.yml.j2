@@ -1,2 +1,66 @@
+#jinja2: lstrip_blocks: True
 # {{ ansible_managed }}
-{{ filebeat_config|to_yaml }}
+---
+setup.template.name: "oio-filebeat"
+setup.template.pattern: "oio-filebeat"
+
+filebeat.inputs:
+{% for input in openio_filebeat_inputs | list %}
+- type: log
+  {% for opt, value in openio_filebeat_input_options.iteritems() %}
+  {{opt}}: {{value}}
+  {% endfor %}
+  paths:
+      - "{{ input.path }}"
+  fields:
+    oio_service: "{{ input.service }}"
+{% endfor %}
+
+processors:
+{% for input in openio_filebeat_inputs | list %}
+- dissect:
+    tokenizer: "{{ input.format }}"
+    field: "message"
+    target_prefix: ""
+    when.equals:
+      oio_service: "{{ input.service }}"
+{% endfor %}
+- drop_event:
+    when.and:
+      - equals:
+          oio_service: "oioswift"
+      - not.equals:
+          oio_swift_source: "-"
+- drop_fields:
+    fields: ["message", "beat", "log", "source", "offset", "prospector", "input", "host"]
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: {{ openio_filebeat_log_dir }}
+  name: filebeat.log
+  keepfiles: 7
+  permissions: 0644
+  rotateeverybytes: 104857600
+
+# TODO: VDO: Support SSL/Configurable options
+output.elasticsearch:
+  hosts: ["{{ openio_filebeat_es_hosts | join('","') }}"]
+  protocol: http
+  path: /
+  index: "oio-filebeat"
+  compression_level: 4
+  worker: 2
+  max_retries: 3
+  bulk_max_size: 50
+  backoff.init: 1s
+  backoff.max: 60s
+  timeout: 90
+  pipeline: "filebeat"
+
+queue:
+  mem:
+    events: 4096
+    flush.min_events: 2048
+    flush.timeout: 1s
+...
