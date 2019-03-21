@@ -1,0 +1,4 @@
+---
+filebeat_gpg_url: http://packages.elastic.co/GPG-KEY-elasticsearch
+filebeat_repo: "deb http://artifacts.elastic.co/packages/6.x/apt stable main"
+...

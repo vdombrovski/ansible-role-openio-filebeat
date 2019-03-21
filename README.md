@@ -1,111 +1,72 @@
-Ansible Role OpenIO Filebeat
-=========
+[![Build Status](https://travis-ci.org/open-io/ansible-role-openio-ROLENAME.svg?branch=master)](https://travis-ci.org/open-io/ansible-role-openio-ROLENAME)
+# Ansible role `ROLENAME`
 
-Installs Elastic's Filebeat for forwarding OpenIO logs.
+An Ansible role for PURPOSE. Specifically, the responsibilities of this role are to:
 
-Role Variables
---------------
+-
 
- - `filebeat_version` - The version of filebeat to install. Defaults to `5.4.1`.
- - `filebeat_config` - YAML representation of our filebeat OpenIO specific configuration.
+## Requirements
+
+- Ansible 2.4+
+
+## Role Variables
+
+| Variable                               | Description                                 | Type    |
+| -------------------------------------- | ------------------------------------------- | ------- |
+| `openio_filebeat_gridinit_dir`         | Gridinit service directory                  | string  |
+| `openio_filebeat_gridinit_file_prefix` | Gridinit file prefix                        | string  |
+| `openio_filebeat_namespace`            | Filebeat namespace                          | string  |
+| `openio_filebeat_pid_directory`        | Filebeat PID directory                      | string  |
+| `openio_filebeat_provision_only`       | Provision only, without restarting services | boolean |
+| `openio_filebeat_serviceid`            | Filebeat service id                         | integer |
+| `openio_filebeat_volume`               | Filebeat internal directory                 | string  |
+| `openio_filebeat_es_hosts`             | Elasticsearch cluster to send data to       | list    |
+
+
+## Dependencies
+
+No dependencies.
+
+## Example Playbook
 
 ```yaml
-filebeat_config:
-  filebeat:
-    prospectors:
-      - paths:
-          - /var/log/oio/sds/*/account*/*.log
-          - /var/log/oio/sds/*/oio-event-agent*/*.log
-          - /var/log/oio/sds/*/oioproxy*/*.log
-          - /var/log/oio/sds/*/conscience*/*.log
-          - /var/log/oio/sds/*/meta*/*.log
-          - /var/log/oio/sds/*/account*/*.log.1
-          - /var/log/oio/sds/*/oio-event-agent*/*.log.1
-          - /var/log/oio/sds/*/oioproxy*/*.log.1
-          - /var/log/oio/sds/*/conscience*/*.log.1
-          - /var/log/oio/sds/*/meta*/*.log.1
-        input_type: log
-        document_type: logs
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
-        ignore_older: 15m
+- hosts: all
+  become: true
+  vars:
+    NS: OPENIO
 
-      - paths:
-          - /var/log/oio/sds/*/account*/*.access
-          - /var/log/oio/sds/*/oio-event-agent*/*.access
-          - /var/log/oio/sds/*/oioproxy*/*.access
-          - /var/log/oio/sds/*/conscience*/*.access
-          - /var/log/oio/sds/*/meta*/*.access
-          - /var/log/oio/sds/*/account*/*.access.1
-          - /var/log/oio/sds/*/oio-event-agent*/*.access.1
-          - /var/log/oio/sds/*/oioproxy*/*.access.1
-          - /var/log/oio/sds/*/conscience*/*.access.1
-          - /var/log/oio/sds/*/meta*/*.access.1
-        input_type: log
-        document_type: access
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
-        ignore_older: 15m
-
-      - paths:
-          - /var/log/oio/sds/*/rawx*/*httpd-errors.log
-        input_type: log
-        document_type: rawx-errors
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
-
-      - paths:
-          - /var/log/oio/sds/*/rawx*/*httpd-access.log
-        input_type: log
-        document_type: rawx-access
-        scan_frequency: 5s
-        close_removed: true
-        close_inactive: 1m
-        close_renamed: true
-
-
-  output:
-    logstash:
-      hosts:
-        - "{{ logstash_host }}"
-  tls:
-      certificate_authorities:
-        - "{{ filebeat_ca_path }}"
-  logging:
-    to_files: true
-    level: warning
-    files:
-      path: /var/log/mybeat
-      name: mybeat.log
-      keepfiles: 7
-      rotateeverybytes: 10485760
-  ```
-  
- - `filebeat_ca_cert`, `filebeat_ca_path`  and `logstash_host`  are provided by ansible playbook.
-
-Playbook example:
----------
-```yaml
----
-- name: Install and configure filebeat
-  hosts: servers
   roles:
-    - { role: ansible-filebeat-master, filebeat_ca_cert: "{{ lookup('file', '/etc/pki/tls/certs/logstash-forwarder.crt') }}",  filebeat_ca_path: /etc/pki/tls/certs/logstash-forwarder.crt, logstash_host: '172.16.139.250:5044' }
+    - role: repo
+      openio_repository_products:
+        sds:
+          release: "18.10"
+    - role: users
+    - role: gridinit
+      openio_gridinit_namespace: "{{ NS }}"
+    - role: role_under_test
+      openio_ROLENAME_namespace: "{{ NS }}"
 ```
 
 
-License
--------
+```ini
+[all]
+node1 ansible_host=192.168.1.173
+```
 
-BSD
+## Contributing
 
-Author Information
-------------------
+Issues, feature requests, ideas are appreciated and can be posted in the Issues section.
 
-David Wittman
+Pull requests are also very welcome.
+The best way to submit a PR is by first creating a fork of this Github project, then creating a topic branch for the suggested change and pushing that branch to your own fork.
+Github can then easily create a PR based on that branch.
+
+## License
+
+GNU AFFERO GENERAL PUBLIC LICENSE, Version 3
+
+## Contributors
+
+- [Cedric DELGEHIER](https://github.com/cdelgehier) (maintainer)
+- [Romain ACCIARI](https://github.com/racciari) (maintainer)
+- [Vincent LEGOLL](https://github.com/vincent-legoll) (maintainer)

@@ -1,0 +1,15 @@
+---
+- name: Install Key
+  apt_key:
+    url: "{{ filebeat_gpg_url }}"
+
+- name: Add repo
+  apt_repository:
+    repo: "{{ filebeat_repo }}"
+    state: present
+    update_cache: yes
+
+- name: Install filebeat package
+  apt:
+    name: "filebeat={{ filebeat_version }}"
+    state: present

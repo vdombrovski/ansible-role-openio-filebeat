@@ -1,2 +1,89 @@
-# {{ ansible_managed }}
-{{ filebeat_config|to_yaml }}
+#Filebeat version 6.6.2
+
+#-----------------------------Filebeat input --------------------------------
+
+filebeat.inputs:
+- type: log
+  paths:
+      - /var/log/oio/sds/*/oioswift-*/oioswift-*.log
+  fields:
+    service: oioswift
+- type: log
+  paths:
+      - /var/log/oio/sds/*/rawx-*/rawx-*-httpd-access.log
+  fields:
+    service: rawx
+- type: log
+  paths:
+      - /var/log/oio/sds/*/meta2-*/meta2-*.access
+  fields:
+    service: meta2
+- type: log
+  paths:
+      - /var/log/oio/sds/*/meta1-*/meta1-*.access
+  fields:
+    service: meta1
+- type: log
+  paths:
+      - /var/log/oio/sds/*/meta0-*/meta0-*.access
+  fields:
+    service: meta0
+- type: log
+  paths:
+      - /var/log/oio/sds/*/oioproxy-*/oioproxy-*.access
+  fields:
+    service: oioproxy
+
+processors:
+- dissect:
+    tokenizer: "%{} %{oio_host} %{} %{oio_loglevel}  %{oio_client_ip} %{oio_remote_ip} %{} %{oio_method} %{oio_url} %{} %{oio_status} %{} %{oio_user_agent} %{} %{oio_bytes_received} %{oio_bytes_sent} %{} %{oio_txid} %{} %{oio_resp_time} %{oio_swift_source} %{} %{} %{} %{}"
+    field: "message"
+    target_prefix: ""
+    when.equals:
+      fields.service: oioswift
+- dissect:
+    tokenizer: "%{} %{} %{} %{oio_host} %{} %{} %{} %{} %{oio_loglevel} %{oio_local_addr} %{oio_remote_addr} %{oio_method} %{oio_status} %{oio_resp_time} %{oio_size} %{oio_chunk_id} %{oio_txid} %{}"
+    field: "message"
+    target_prefix: ""
+    when.equals:
+      fields.service: rawx
+- dissect:
+    tokenizer: "%{} %{oio_host} %{} %{oio_loglevel}  %{} %{} %{} %{} %{oio_local_addr} %{oio_remote_addr} %{oio_method} %{oio_status} %{oio_resp_time} %{oio_size} %{oio_m2_base} %{oio_txid} %{} %{}"
+    field: "message"
+    target_prefix: ""
+    when.equals:
+      fields.service: meta2
+- dissect:
+    tokenizer: "%{} %{oio_host} %{} %{oio_loglevel}  %{} %{} %{} %{} %{oio_local_addr} %{oio_remote_addr} %{oio_method} %{oio_status} %{oio_resp_time} %{oio_size} %{oio_m2_base} %{oio_txid} %{} %{}"
+    field: "message"
+    target_prefix: ""
+    when.equals:
+      fields.service: meta1
+- dissect:
+    tokenizer: "%{} %{oio_host} %{} %{oio_loglevel}  %{} %{} %{} %{} %{oio_local_addr} %{oio_remote_addr} %{oio_method} %{oio_status} %{oio_resp_time} %{oio_size} %{} %{oio_txid} %{}"
+    field: "message"
+    target_prefix: ""
+    when.equals:
+      fields.service: meta0
+- dissect:
+    tokenizer: "%{} %{oio_host} %{} %{oio_loglevel}  %{} %{} %{} %{} %{oio_local_addr} %{oio_remote_addr} %{oio_method} %{oio_status} %{oio_resp_time} %{oio_size} %{oio_m2_base} %{oio_txid} %{oio_url} %{}"
+    field: "message"
+    target_prefix: ""
+    when.equals:
+      fields.service: oioproxy
+- drop_fields:
+    fields: ["message", "beat", "log", "source", "offset", "prospector", "input", "host"]
+
+logging.level: info
+logging.to_files: true
+logging.files:
+  path: {{ openio_filebeat_log_dir }}
+  name: filebeat.log
+  keepfiles: 7
+  permissions: 0644
+  rotateeverybytes: 104857600
+
+output.elasticsearch:
+  hosts: ["{{ openio_filebeat_es_hosts | join('","') }}"]
+  protocol: http
+  path: /

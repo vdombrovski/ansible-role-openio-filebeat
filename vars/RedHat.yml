@@ -1,0 +1,5 @@
+---
+## Redhat
+filebeat_repo_url_v1: http://packages.elastic.co/beats/yum/el/$basearch
+filebeat_repo_url_v5: http://artifacts.elastic.co/packages/5.x/yum
+...

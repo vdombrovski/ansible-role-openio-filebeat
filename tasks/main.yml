@@ -1,31 +1,91 @@
 ---
-- include: redhat.yml
-  when: ansible_os_family == 'RedHat'
+- name: "Include {{ ansible_distribution }} variables"
+  include_vars: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+  tags: install
 
-- include: debian.yml
-  when: ansible_os_family == 'Debian'
+- name: "Include {{ ansible_distribution }} tasks"
+  include_tasks: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+  tags: install
 
-- name: create filebeat.yml
-  template:
-    src: filebeat.yml.j2
-    dest: /etc/filebeat/filebeat.yml
-  notify:
-    - restart filebeat
-
-- name: copy ca certificate if required
-  copy:
-    content: "{{ filebeat_ca_cert }}"
-    dest: "{{ filebeat_ca_path }}"
-    owner: root
-    group: root
-    mode: 0400
-  when: filebeat_ca_cert != None
-
-- name: flush handlers to prevent start then restart
-  meta: flush_handlers
-
-- name: start and enable filebeat
+- name: "Stop/disable default instance"
   service:
     name: filebeat
-    state: started
-    enabled: true
+    state: stopped
+    enabled: false
+  tags: install
+
+- name: Test directories presence
+  stat:
+    path: "{{ item }}"
+  register: _dir
+  with_items:
+    - "{{ openio_filebeat_gridinit_dir }}"
+    - "{{ openio_filebeat_pid_directory }}"
+    - "{{ openio_filebeat_volume }}"
+    - "{{ openio_filebeat_sysconfig_dir }}/{{ openio_filebeat_servicename }}"
+  tags: install
+
+- name: Ensure directories exists
+  file:
+    path: "{{ item.item }}"
+    state: directory
+    owner: openio
+    group: openio
+    mode: 0755
+    recurse: true
+  with_items: "{{ _dir.results }}"
+  when: not item.stat.exists
+  tags: install
+
+- name: Ensure log directory
+  file:
+    path: "{{ openio_filebeat_log_dir }}"
+    state: directory
+    owner: openio
+    group: openio
+    mode: 0750
+    recurse: true
+  tags: install
+
+- name: Ensure filebeat pid directory is persistant
+  lineinfile:
+    dest: /etc/tmpfiles.d/filebeat.conf
+    create: true
+    line: "d {{ openio_filebeat_pid_directory }} 755 openio openio -"
+    owner: openio
+    group: openio
+    mode: 0644
+  tags: install
+  when: openio_filebeat_pid_directory.split(' ')[0] | dirname is match("/run/.*")
+
+- name: Generate configuration files
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: openio
+    group: openio
+    mode: 0644
+  with_items:
+    - src: "filebeat.yml.j2"
+      dest: "{{ openio_filebeat_sysconfig_dir }}/\
+        {{ openio_filebeat_servicename }}/filebeat.yml"
+    - src: "gridinit_filebeat.conf.j2"
+      dest: "{{ openio_filebeat_gridinit_dir }}/{{ openio_filebeat_gridinit_file_prefix }}\
+        {{ openio_filebeat_servicename }}.conf"
+  register: _filebeat_conf
+  tags: configure
+
+- name: Restart filebeat
+  shell: |
+    gridinit_cmd reload
+    gridinit_cmd restart {{ openio_filebeat_namespace }}-{{ openio_filebeat_servicename }}
+  when:
+    - _filebeat_conf.changed
+    - not openio_filebeat_provision_only
+  tags: configure

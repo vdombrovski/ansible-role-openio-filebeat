@@ -1,0 +1,7 @@
+---
+openio_filebeat_sysconfig_dir: "/etc/oio/sds/{{ openio_filebeat_namespace }}"
+openio_filebeat_servicename: "filebeat-{{ openio_filebeat_serviceid}}"
+openio_filebeat_log_dir:
+  "/var/log/oio/sds/{{ openio_filebeat_namespace }}/{{ openio_filebeat_servicename }}"
+syslog_user: syslog
+...
