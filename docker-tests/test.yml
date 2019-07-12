@@ -4,7 +4,15 @@
   become: true
   vars:
     namespace: TRAVIS
-
+  pre_tasks:
+    - name: Add localhost to group 'elasticsearch'
+      add_host:
+        name: localhost
+        groups: elasticsearch
+      changed_when: false
+    - name: "set openio_bind_mgmt_address (for elasticsearch)"
+      set_fact:
+        openio_bind_mgmt_address: "{{ ansible_default_ipv4.address }}"
   roles:
     - role: repo
     - role: users
@@ -13,7 +21,4 @@
       openio_gridinit_per_ns: false
     - role: role_under_test
       openio_filebeat_namespace: "{{ namespace }}"
-      openio_filebeat_serviceid: "0"
-      openio_filebeat_gridinit_dir: "/etc/gridinit.d/"
-      openio_filebeat_gridinit_file_prefix: "{{ namespace }}-"
 ...
